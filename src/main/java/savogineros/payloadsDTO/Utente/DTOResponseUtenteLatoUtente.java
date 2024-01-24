@@ -1,11 +1,12 @@
 package savogineros.payloadsDTO.Utente;
 
+import savogineros.entities.Role;
 import savogineros.payloadsDTO.Dispositivo.DTOResponseDispositivoLatoUtente;
 
 import java.util.List;
 import java.util.UUID;
 
-public record DTOResponseUtenteLatoUtente(UUID id, String username, String nome, String cognome, String email, String password, List<DTOResponseDispositivoLatoUtente> listaDispositivi) {
+public record DTOResponseUtenteLatoUtente(UUID id, String username, String nome, String cognome, String email, String password, Role role, List<DTOResponseDispositivoLatoUtente> listaDispositivi) {
 }
 // I record dispongono in automatico di tutti i getter, MA non dei setter
 // Dato che non abbiamo i setter il costruttore con tutti gli argomenti è incluso, quindi non devo

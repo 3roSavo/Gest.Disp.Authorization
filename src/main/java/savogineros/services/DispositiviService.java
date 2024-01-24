@@ -40,7 +40,8 @@ public class DispositiviService {
                     if (dispositivo.getUtente() != null) {
                         utenteAssociato = new DTOResponseUtenteLatoDispositivo(
                     dispositivo.getUtente().getId(),
-                    dispositivo.getUtente().getUserName());
+                    dispositivo.getUtente().getUserName(),
+                        dispositivo.getUtente().getRole());
                     } else {
                         utenteAssociato = null;
                     }
@@ -67,7 +68,8 @@ public class DispositiviService {
         DTOResponseUtenteLatoDispositivo utenteAssociato = dispositivo.getUtente() != null ?
                 new DTOResponseUtenteLatoDispositivo(
                         dispositivo.getUtente().getId(),
-                        dispositivo.getUtente().getUserName()
+                        dispositivo.getUtente().getUserName(),
+                        dispositivo.getUtente().getRole()
                 )
                 : null;
 

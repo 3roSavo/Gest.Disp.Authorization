@@ -32,7 +32,7 @@ public class AuthenticationController {
 
     // POST - Aggiungi un utente
     // URL http://localhost:3001/authentication     + (body)
-    @PostMapping("register")
+    @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public DTOResponseUtenteLatoUtente creaUtente(@RequestBody @Validated NewUtenteRequestDTO utente, BindingResult validation) {
         // Per completare la validazione devo in qualche maniera fare un controllo del tipo: se ci sono errori -> manda risposta con 400 Bad Request

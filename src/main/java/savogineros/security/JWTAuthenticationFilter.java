@@ -13,7 +13,6 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import savogineros.entities.Utente;
 import savogineros.exceptions.UnauthorizedException;
-import savogineros.payloadsDTO.Utente.DTOResponseUtenteLatoUtente;
 import savogineros.services.UtentiService;
 
 import java.io.IOException;
@@ -50,11 +49,11 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
 
             // 3.1 Cerco l'utente a DB (l'id sta all'interno del token)
             String id = jwtTools.extractIdFromToken(accessToken);
-            DTOResponseUtenteLatoUtente utente = utentiService.getUtenteById(UUID.fromString(id));
+            Utente utente = utentiService.getUtenteById(UUID.fromString(id));
 
             // 3.2 Informo Spring Security che l'utente è autenticato
             // Senza questo passaggio continuerò ad avere 403 forbidden cioè non autorizzato come risposta
-            Authentication authentication = new UsernamePasswordAuthenticationToken(utente, null);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(utente, null, utente.getAuthorities()); // OBBLIGATORIO aggiungere l'elenco ruoli se si vuole "attivare" il meccanismo di Autorizzazione
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             // 3.3 Possiamo proseguire al prossimo elemento della chain (e prima o poi si arriverà al controller)

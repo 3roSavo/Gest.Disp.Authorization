@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import savogineros.entities.Dispositivo;
+import savogineros.entities.Role;
 import savogineros.entities.Utente;
 import savogineros.exceptions.NotFoundException;
 import savogineros.payloadsDTO.Dispositivo.DTOResponseDispositivoLatoUtente;
@@ -43,6 +44,7 @@ public class UtentiService {
                     utente.getCognome(),
                     utente.getEmail(),
                     utente.getPassword(),
+                    utente.getRole(),
                     listaDispositivi
             );
             // Finalmente abbiamo usato due DTO per personalizzare la risposta in JSON senza creare StackOverflow
@@ -63,6 +65,7 @@ public class UtentiService {
                 utenteRequestDTO.password()
         );
 
+        utente.setRole(Role.USER); // Alla creazione di un utente sarà in automatico assegnato il ruolo di USER, sarà un eventuale ADMIN a cambiare questo ruolo
         // Se ho compreso bene sarebbe da creare col dao utente l'oggetto nel DB e poi associarci la lista di dispositivi
         utentiDAO.save(utente);
 
@@ -88,39 +91,28 @@ public class UtentiService {
                 utente.getCognome(),
                 utente.getEmail(),
                 utente.getPassword(),
+                utente.getRole(),
                 listaDispositivi
         );
     }
 
     // GET Ricerca specifico utente con id------------------------------------------------------------------------
-    public DTOResponseUtenteLatoUtente getUtenteById(UUID idUtente) {
+    public Utente getUtenteById(UUID idUtente) {
 
-        Optional<Utente> utente = utentiDAO.findById(idUtente);
+        /*Optional<Utente> utente = utentiDAO.findById(idUtente);
         if (utente.isPresent()) {
-            List<DTOResponseDispositivoLatoUtente> responseDispositivo = new ArrayList<>();
-            if (!utente.get().getListaDispositivi().isEmpty()) {
-                utente.get().getListaDispositivi()
-                        .forEach(dispositivo -> responseDispositivo.add(new DTOResponseDispositivoLatoUtente(
-                                dispositivo.getId(),
-                                dispositivo.getStatoDispositivo())));
-            }
-        return new DTOResponseUtenteLatoUtente(
-                utente.get().getId(),
-                utente.get().getUserName(),
-                utente.get().getNome(),
-                utente.get().getCognome(),
-                utente.get().getEmail(),
-                utente.get().getPassword(),
-                responseDispositivo
-        );
+            return  utente.get();
         } else {
             throw new NotFoundException(idUtente);
-        }
+        }*/
+        // OPPURE SEMPLIFICATA
+        return utentiDAO.findById(idUtente).orElseThrow(() -> new NotFoundException(idUtente));
+
     }
 
     // PUT Modifica un Utente, dato id e corpo della richiesta-------------------------------------------------------
     public DTOResponseUtenteLatoUtente modificaUtente(UUID idUtente, NewUtenteRequestDTO richiestaUtente) {
-        Utente utente = utentiDAO.findById(idUtente).orElseThrow(() -> new NotFoundException(idUtente));
+        Utente utente = getUtenteById(idUtente);
         // Variante senza if, utilizzando la scorciatoia .orElseThrow per lanciare un'eccezione nel caso id non presente nel DB
         utente.setUserName(richiestaUtente.userName());
         utente.setNome(richiestaUtente.nome());
@@ -173,6 +165,7 @@ public class UtentiService {
                 utente.getCognome(),
                 utente.getEmail(),
                 utente.getPassword(),
+                utente.getRole(),
                 responseListaDispositivi
         );
     }

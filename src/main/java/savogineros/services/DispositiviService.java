@@ -7,11 +7,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import savogineros.entities.Dispositivo;
+import savogineros.entities.Utente;
 import savogineros.exceptions.NotFoundException;
 import savogineros.payloadsDTO.Dispositivo.DTOResponseDispositivoLatoDispositivo;
 import savogineros.payloadsDTO.Dispositivo.NewDispositivoRequestDTO;
 import savogineros.payloadsDTO.Utente.DTOResponseUtenteLatoDispositivo;
 import savogineros.repositories.DispositiviDAO;
+import savogineros.repositories.UtentiDAO;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +22,11 @@ import java.util.UUID;
 public class DispositiviService {
     @Autowired
     private DispositiviDAO dispositiviDAO;
+
+    //@Autowired
+    //private UtentiService utentiService;
+    @Autowired
+    private UtentiDAO utentiDAO; // È sbagliato richiamare il DAO qui ma non so come fare
 
     // GET -> getAllDispositivi
     /*public Page<Dispositivo> getAllDispositivi(int page, int size, String sort) {
@@ -57,14 +64,23 @@ public class DispositiviService {
     }
 
     // POST -> save
-    public DTOResponseDispositivoLatoDispositivo salvaDispositivo(NewDispositivoRequestDTO richiestaDispositivo) {
+    public Dispositivo salvaDispositivo(NewDispositivoRequestDTO richiestaDispositivo) {
         Dispositivo dispositivo = new Dispositivo();
-        dispositivo.setStatoDispositivo(richiestaDispositivo.statoDispositivo());
-        dispositivo.setUtente(richiestaDispositivo.utente());
-        dispositiviDAO.save(dispositivo);
-        // salvato sul DB l'oggetto Dispositivo
-        // Passiamo ora alla response JSON
 
+        dispositivo.setStatoDispositivo(richiestaDispositivo.statoDispositivo());
+
+
+        if (richiestaDispositivo.utente() != null) {
+            dispositivo.setUtente(utentiDAO.findById(richiestaDispositivo.utente().getId()).orElseThrow(
+                () -> new NotFoundException(richiestaDispositivo.utente().getId())));
+        } else {
+            dispositivo.setUtente(null);
+        }
+        return dispositiviDAO.save(dispositivo);
+        // salvato sul DB l'oggetto Dispositivo
+
+        /*
+        // Passiamo ora alla response JSON
         DTOResponseUtenteLatoDispositivo utenteAssociato = dispositivo.getUtente() != null ?
                 new DTOResponseUtenteLatoDispositivo(
                         dispositivo.getUtente().getId(),
@@ -73,6 +89,7 @@ public class DispositiviService {
                 )
                 : null;
 
+         */
            /*if (dispositivo.getUtente() != null) {
                 utenteAssociato = new DTOResponseUtenteLatoDispositivo(
                     dispositivo.getUtente().getId(),
@@ -83,7 +100,7 @@ public class DispositiviService {
            }*/
 
            // Nel caso manchi l'utente nella richiesta, esso avrà valore null, senza il controllo causa un errore
-
+        /*
           return new DTOResponseDispositivoLatoDispositivo(
                   dispositivo.getId(),
                   dispositivo.getStatoDispositivo(),
@@ -91,22 +108,26 @@ public class DispositiviService {
           );
         // Funziona tutto ma l'userName di risposta non viene visualizzato correttamente
         // la mia ipotesi è che ci sia il solito problema lazy fetch o qualche sincronizzazione ritardata
+        */
     }
 
     // GET Ricerca specifico Dispositivo con id
     public Dispositivo getDispositivoById(UUID idDispositivo) {
-        Optional<Dispositivo> dispositivo = dispositiviDAO.findById(idDispositivo);
+
+        /*Optional<Dispositivo> dispositivo = dispositiviDAO.findById(idDispositivo);
         if (dispositivo.isPresent()) {
             return dispositivo.get();
         } else {
             throw new NotFoundException(idDispositivo);
-        }
+        }*/
+        // Forma abbreviata
+        return dispositiviDAO.findById(idDispositivo).orElseThrow( () -> new NotFoundException(idDispositivo));
     }
 
     // PUT Modifica un Dispositivo, dato id e corpo della richiesta
     public Dispositivo modificaDispositivo(UUID idDispositivo, NewDispositivoRequestDTO richiestaDispositivo) {
         Dispositivo dispositivo = getDispositivoById(idDispositivo);
-        dispositivo.setStatoDispositivo(richiestaDispositivo.statoDispositivo());
+        Utente utente = utentiDAO.findById(richiestaDispositivo.utente().getId()).orElseThrow( () -> new NotFoundException(richiestaDispositivo.utente().getId()));
         dispositivo.setUtente(richiestaDispositivo.utente());
         return dispositiviDAO.save(dispositivo); // ricordati che la save fa da creazione o modifica nel caso trovi già un elemento con lo stesso id
     }

@@ -8,9 +8,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import savogineros.entities.Dispositivo;
 import savogineros.entities.Role;
+import savogineros.entities.StatoDispositivo;
 import savogineros.entities.Utente;
 import savogineros.exceptions.NotFoundException;
 import savogineros.payloadsDTO.Dispositivo.DTOResponseDispositivoLatoUtente;
+import savogineros.payloadsDTO.Dispositivo.NewDispositivoRequestDTO;
+import savogineros.payloadsDTO.Utente.NewUtenteAdminRequestDTO;
 import savogineros.payloadsDTO.Utente.NewUtenteRequestDTO;
 import savogineros.payloadsDTO.Utente.DTOResponseUtenteLatoUtente;
 import savogineros.repositories.DispositiviDAO;
@@ -25,8 +28,8 @@ import java.util.UUID;
 public class UtentiService {
     @Autowired
     private UtentiDAO utentiDAO;
-    @Autowired // Questo DAO lo userò per settare la lista di dispositivi nell'utente
-    private DispositiviDAO dispositiviDAO;
+    @Autowired // Questo service lo userò per settare la lista di dispositivi nell'utente
+    private DispositiviService dispositiviService;
 
     // GET -> getAllUsers-------------------------------------------------------------------------------------
     public Page<DTOResponseUtenteLatoUtente> getAllUsers(int page, int size, String sort) {
@@ -53,7 +56,7 @@ public class UtentiService {
     }
 
     // POST -> save--------------------------------------------------------------------------------------------
-    public DTOResponseUtenteLatoUtente salvaUtente(NewUtenteRequestDTO utenteRequestDTO) {
+    public Utente salvaUtente(NewUtenteRequestDTO utenteRequestDTO) {
 
         List<DTOResponseDispositivoLatoUtente> listaDispositivi = new ArrayList<>();
 
@@ -64,36 +67,32 @@ public class UtentiService {
                 utenteRequestDTO.email(),
                 utenteRequestDTO.password()
         );
-
         utente.setRole(Role.USER); // Alla creazione di un utente sarà in automatico assegnato il ruolo di USER, sarà un eventuale ADMIN a cambiare questo ruolo
         // Se ho compreso bene sarebbe da creare col dao utente l'oggetto nel DB e poi associarci la lista di dispositivi
-        utentiDAO.save(utente);
+
+        //utente.setListaDispositivi(utenteRequestDTO.listaDispositivi());
+        //utentiDAO.save(utente);
+            utente.setListaDispositivi(new ArrayList<>());
 
         // il costruttore non accetta la lista, quindi la setto dopo la creazione,
         // prima però devo assicurarmi che ci siano o meno elementi
-        utente.setListaDispositivi(new ArrayList<>());
         if (!utenteRequestDTO.listaDispositivi().isEmpty()) {
+            utentiDAO.save(utente);
 
             utenteRequestDTO.listaDispositivi().forEach(dispositivo -> {
-                Dispositivo dispositivo1 = dispositiviDAO.findById(dispositivo.getId()).orElseThrow(() -> new NotFoundException(dispositivo.getId()));
-                dispositivo1.setUtente(utente);
-                dispositiviDAO.save(dispositivo1);
-                listaDispositivi.add(new DTOResponseDispositivoLatoUtente(dispositivo1.getId(), dispositivo1.getStatoDispositivo()));
+                Dispositivo dispositivoTrovato = dispositiviService.getDispositivoById(dispositivo.getId());
+                dispositivoTrovato.setUtente(utente);
 
+                NewDispositivoRequestDTO dispositivoRequestDTO = new NewDispositivoRequestDTO(
+                        dispositivoTrovato.getStatoDispositivo(),
+                        dispositivoTrovato.getUtente());
+
+                dispositiviService.modificaDispositivo(dispositivoTrovato.getId(), dispositivoRequestDTO);
+
+                //listaDispositivi.add(new DTOResponseDispositivoLatoUtente(dispositivo1.getId(), dispositivo1.getStatoDispositivo()));
             });
-
         }
-
-        return new DTOResponseUtenteLatoUtente(
-                utente.getId(),
-                utente.getUserName(),
-                utente.getNome(),
-                utente.getCognome(),
-                utente.getEmail(),
-                utente.getPassword(),
-                utente.getRole(),
-                listaDispositivi
-        );
+        return utentiDAO.save(utente);
     }
 
     // GET Ricerca specifico utente con id------------------------------------------------------------------------
@@ -111,63 +110,90 @@ public class UtentiService {
     }
 
     // PUT Modifica un Utente, dato id e corpo della richiesta-------------------------------------------------------
-    public DTOResponseUtenteLatoUtente modificaUtente(UUID idUtente, NewUtenteRequestDTO richiestaUtente) {
+    // Questa metodo è per gli USER, dato che nel payload manca il role
+    public Utente modificaUtentePerRoleUtente(UUID idUtente, NewUtenteRequestDTO richiestaUtente) {
         Utente utente = getUtenteById(idUtente);
-        // Variante senza if, utilizzando la scorciatoia .orElseThrow per lanciare un'eccezione nel caso id non presente nel DB
+
         utente.setUserName(richiestaUtente.userName());
         utente.setNome(richiestaUtente.nome());
         utente.setCognome(richiestaUtente.cognome());
         utente.setEmail(richiestaUtente.email());
+        utente.setPassword(richiestaUtente.password());
+
 
         // Penso che prima di modificare la lista di dispositivi andrebbe impostato a null ogni
         // elemento della lista, così da separare ogni utente dai dispositivi associati
+        // per poi riempirla coi dispositivi passati con la request,
         // sempre attraverso il dao dei dispositivi, POI puoi procedere all'aggiunta o alla rimozione
         if (!utente.getListaDispositivi().isEmpty()) {
             utente.getListaDispositivi().forEach(dispositivo -> {
-                dispositivo.setUtente(null);
+                dispositiviService.modificaDispositivo(
+                        dispositivo.getId(),
+                        new NewDispositivoRequestDTO(dispositivo.getStatoDispositivo(),null));
             });
         }
 
-        List<DTOResponseDispositivoLatoUtente> responseListaDispositivi = new ArrayList<>();
-        // mi servirà per crearmi la mia response lista dispositivi all'interno della response utente
+        //utente.setListaDispositivi(richiestaUtente.listaDispositivi());
 
-        // FORSE IL PROBLEMA È CHE DEVO USARE IL DAO DEL DISPOSITIVO PER SALVARE OGNI DISPOSITIVO NELLA LISTA DISPOSITIVI DELL'UTENTE
-        // OK RISOLTO PROPRIO IN QUESTO MODO MA E' IL METODO CORRETTO???
-
-        // Innanzitutto controlliamo se la lista dispositivi è vuota o meno, nel caso sia vuota non eseguiamo logica
+        // Innanzitutto controlliamo se la lista dispositivi della request è vuota o meno, nel caso sia vuota non eseguiamo logica
         if (!richiestaUtente.listaDispositivi().isEmpty()) {
             richiestaUtente.listaDispositivi().forEach( dispositivo -> {
 
-                // Controlliamo poi che ogni elemento contenga id validi
-                Optional<Dispositivo> dispositivoOptional = dispositiviDAO.findById(dispositivo.getId());
-                if (dispositivoOptional.isPresent()) {
-                    responseListaDispositivi.add(new DTOResponseDispositivoLatoUtente(
-                            dispositivo.getId(),
-                            dispositivoOptional.get().getStatoDispositivo())); // ricordati che nella request in Json passiamo solo l'id
+                // Controlliamo poi che ogni dispositivo esista effettivamente nel DB
+                Dispositivo dispositivo111 = dispositiviService.getDispositivoById(dispositivo.getId());
 
-                    dispositivoOptional.get().setUtente(utente);
-                    dispositiviDAO.save(dispositivoOptional.get());
-                } else {
-                    throw new NotFoundException(dispositivo.getId());
-                }
+                // Per modificare un dispositivo il mio metodo "modificaDispositivo" richiede come secondo parametro un oggetto NewDispositivoRequestDTO, non un Dispositivo
+                NewDispositivoRequestDTO dispositivoRequestDTO = new NewDispositivoRequestDTO(StatoDispositivo.Assegnato, utente);
+
+                dispositiviService.modificaDispositivo(dispositivo.getId(), dispositivoRequestDTO);
+
+            });
+        }
+        return utentiDAO.save(utente);
+
+    }
+
+    public Utente modificaUtentePerAdmin(UUID idUtente, NewUtenteAdminRequestDTO richiestaUtente) {
+        Utente utente = getUtenteById(idUtente);
+
+        utente.setUserName(richiestaUtente.userName());
+        utente.setNome(richiestaUtente.nome());
+        utente.setCognome(richiestaUtente.cognome());
+        utente.setEmail(richiestaUtente.email());
+        utente.setPassword(richiestaUtente.password());
+        utente.setRole(richiestaUtente.role());
+
+
+        // Penso che prima di modificare la lista di dispositivi andrebbe impostato a null ogni
+        // elemento della lista, così da separare ogni utente dai dispositivi associati
+        // per poi riempirla coi dispositivi passati con la request,
+        // sempre attraverso il dao dei dispositivi, POI puoi procedere all'aggiunta o alla rimozione
+        if (!utente.getListaDispositivi().isEmpty()) {
+            utente.getListaDispositivi().forEach(dispositivo -> {
+                dispositiviService.modificaDispositivo(
+                        dispositivo.getId(),
+                        new NewDispositivoRequestDTO(dispositivo.getStatoDispositivo(),null));
             });
         }
 
-        utente.getListaDispositivi().forEach(dispositivo -> System.out.println(dispositivo));
+        //utente.setListaDispositivi(richiestaUtente.listaDispositivi());
 
-        utentiDAO.save(utente);
-        // ricordati che la save fa da creazione o modifica nel caso trovi già un elemento con lo stesso id
+        // Innanzitutto controlliamo se la lista dispositivi della request è vuota o meno, nel caso sia vuota non eseguiamo logica
+        if (!richiestaUtente.listaDispositivi().isEmpty()) {
+            richiestaUtente.listaDispositivi().forEach( dispositivo -> {
 
-        return new DTOResponseUtenteLatoUtente(
-                utente.getId(),
-                utente.getUserName(),
-                utente.getNome(),
-                utente.getCognome(),
-                utente.getEmail(),
-                utente.getPassword(),
-                utente.getRole(),
-                responseListaDispositivi
-        );
+                // Controlliamo poi che ogni dispositivo esista effettivamente nel DB
+                Dispositivo dispositivo111 = dispositiviService.getDispositivoById(dispositivo.getId());
+
+                // Per modificare un dispositivo il mio metodo "modificaDispositivo" richiede come secondo parametro un oggetto NewDispositivoRequestDTO, non un Dispositivo
+                NewDispositivoRequestDTO dispositivoRequestDTO = new NewDispositivoRequestDTO(StatoDispositivo.Assegnato, utente);
+
+                dispositiviService.modificaDispositivo(dispositivo.getId(), dispositivoRequestDTO);
+
+            });
+        }
+        return utentiDAO.save(utente);
+
     }
 
     // DELETE Elimina utente, dato id

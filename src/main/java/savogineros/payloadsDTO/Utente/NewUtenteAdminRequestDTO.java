@@ -10,7 +10,7 @@ import savogineros.entities.Role;
 
 import java.util.List;
 
-public record NewUtenteRequestDTO(
+public record NewUtenteAdminRequestDTO(
         @NotEmpty(message = "Lo user name è un campo obbligatorio")
         @Size(min = 3, max = 20, message = "Lo user name deve essere compreso tra 3 e 20 caratteri")
         String userName,
@@ -26,9 +26,9 @@ public record NewUtenteRequestDTO(
         @NotEmpty
         @Size(min = 8, max = 30, message = "La password deve essere compresa tra 8 e 30 caratteri")
         String password,
+        @NotEmpty
+        @Enumerated(EnumType.STRING)
+        Role role,
+
         List<Dispositivo> listaDispositivi) {
 }
-// I record dispongono in automatico di tutti i getter, MA non dei setter
-// Dato che non abbiamo i setter il costruttore con tutti gli argomenti è incluso, quindi non devo
-// crearmi a mano l'oggetto nel controller
-// Ogni parametro del record corrisponde in automatico a un attributo

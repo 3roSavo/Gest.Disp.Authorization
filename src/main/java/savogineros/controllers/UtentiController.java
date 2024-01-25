@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import savogineros.entities.Utente;
 import savogineros.exceptions.BadRequestException;
 import savogineros.payloadsDTO.Dispositivo.DTOResponseDispositivoLatoUtente;
+import savogineros.payloadsDTO.Utente.NewUtenteAdminRequestDTO;
 import savogineros.payloadsDTO.Utente.NewUtenteRequestDTO;
 import savogineros.payloadsDTO.Utente.DTOResponseUtenteLatoUtente;
 import savogineros.services.UtentiService;
@@ -52,8 +53,27 @@ public class UtentiController {
     @PutMapping("/me")
     public DTOResponseUtenteLatoUtente getMeAndUpdate(@AuthenticationPrincipal Utente currentUser, @RequestBody NewUtenteRequestDTO richiestaUtente) {
         UUID id = currentUser.getId();
-        return utentiService.modificaUtente(id, richiestaUtente); // controlla se funziona
+
+        Utente utente = utentiService.modificaUtentePerRoleUtente(id, richiestaUtente);
+
+        List<DTOResponseDispositivoLatoUtente> responseDispositivo = utente.getListaDispositivi().stream().map( dispositivo ->
+                new DTOResponseDispositivoLatoUtente(dispositivo.getId(),
+                        dispositivo.getStatoDispositivo()))
+                .toList();
+
+        return new DTOResponseUtenteLatoUtente(               // controlla se funziona
+                utente.getId(),
+                utente.getUsername(),
+                utente.getNome(),
+                utente.getCognome(),
+                utente.getEmail(),
+                utente.getPassword(),
+                utente.getRole(), responseDispositivo);
     }
+
+
+
+
     @DeleteMapping("/me")
     public void getMeAndDelete(@AuthenticationPrincipal Utente currentUser) {
         utentiService.eliminaUtente(currentUser.getId()); // controlla se funziona
@@ -88,6 +108,7 @@ public class UtentiController {
 
     // GET - Ricerca specifico Utente
     // URL http://localhost:3001/utenti/{idUtente}
+
     // LA COMMENTIAMO E LA TRASFORMIAMO IN /me E QUINDI ACCEDIAMO ALLE INFORMAZIONI ATTRAVERSO L'AUTENTICAZIONE (TOKEN)
 
     /*@GetMapping("/{idUtente}")
@@ -112,11 +133,27 @@ public class UtentiController {
     // URL http://localhost:3001/utenti/{idUtente}     + (body)
     @PutMapping("/{idUtente}")
     @PreAuthorize("hasAuthority('ADMIN')")  // Solo gli admin possono modificare un utente
-    public DTOResponseUtenteLatoUtente modificaUtente(@PathVariable UUID idUtente, @RequestBody NewUtenteRequestDTO richiestaUtente) {
+    public DTOResponseUtenteLatoUtente modificaUtente(@PathVariable UUID idUtente, @RequestBody NewUtenteAdminRequestDTO richiestaUtente) {
         // Mi vengono in mente due modi, o mi inietto in questa classe la repo UtentiDao così da utilizzare un'altra save()
         // Oppure mi faccio un altro metodo specifico per gli Update nel service
         // Seguiamo la seconda opzione
-        return utentiService.modificaUtente(idUtente,richiestaUtente);
+        Utente utente = utentiService.modificaUtentePerAdmin(idUtente,richiestaUtente);
+
+        List<DTOResponseDispositivoLatoUtente> responseListaDispositivi = new ArrayList<>();
+        utente.getListaDispositivi().forEach( dispositivo ->
+                responseListaDispositivi.add( new DTOResponseDispositivoLatoUtente(
+                        dispositivo.getId(),
+                        dispositivo.getStatoDispositivo())));
+
+        return new DTOResponseUtenteLatoUtente(
+                utente.getId(),
+                utente.getUserName(),
+                utente.getNome(),
+                utente.getCognome(),
+                utente.getEmail(),
+                utente.getPassword(),
+                utente.getRole(),
+                responseListaDispositivi);
     }
 
     // DELETE - Elimina un utente dato l'id

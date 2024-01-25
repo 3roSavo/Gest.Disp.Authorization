@@ -109,9 +109,7 @@ public class UtentiController {
     // GET - Ricerca specifico Utente
     // URL http://localhost:3001/utenti/{idUtente}
 
-    // LA COMMENTIAMO E LA TRASFORMIAMO IN /me E QUINDI ACCEDIAMO ALLE INFORMAZIONI ATTRAVERSO L'AUTENTICAZIONE (TOKEN)
-
-    /*@GetMapping("/{idUtente}")
+    @GetMapping("/{idUtente}")  // Questo end point potrebbe servire per ricercare un utente tramite l'id, quindi lo teniamo attivo
     public DTOResponseUtenteLatoUtente getUtenteById(@PathVariable UUID idUtente) {  // se non sbaglio il nome della variabile DEVE essere uguale a quella dell' URL. Quindi anche nella PUT
         Utente utente = utentiService.getUtenteById(idUtente);
         List<DTOResponseDispositivoLatoUtente> dtoResponseDispositivoLatoUtente = utente.getListaDispositivi().stream().map(dispositivo ->
@@ -127,12 +125,12 @@ public class UtentiController {
                 utente.getRole(),
                 dtoResponseDispositivoLatoUtente
         );
-    }*/
+    }
 
     // PUT - Modifica Utente dato id e payload
     // URL http://localhost:3001/utenti/{idUtente}     + (body)
     @PutMapping("/{idUtente}")
-    @PreAuthorize("hasAuthority('ADMIN')")  // Solo gli admin possono modificare un utente
+    @PreAuthorize("hasAuthority('ADMIN')")  // Qui solo gli admin possono modificare un utente, tra cui anche il ruolo
     public DTOResponseUtenteLatoUtente modificaUtente(@PathVariable UUID idUtente, @RequestBody NewUtenteAdminRequestDTO richiestaUtente) {
         // Mi vengono in mente due modi, o mi inietto in questa classe la repo UtentiDao così da utilizzare un'altra save()
         // Oppure mi faccio un altro metodo specifico per gli Update nel service
@@ -159,7 +157,7 @@ public class UtentiController {
     // DELETE - Elimina un utente dato l'id
     // URL http://localhost:3001/utenti/{idUtente}
     @DeleteMapping("{idUtente}")
-    @PreAuthorize("hasAuthority('ADMIN')")  // Solo gli admin possono cancellare un utente
+    @PreAuthorize("hasAuthority('ADMIN')")  // Qui solo gli admin possono cancellare un utente
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminaUtente(@PathVariable UUID idUtente) {
         utentiService.eliminaUtente(idUtente);

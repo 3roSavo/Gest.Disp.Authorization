@@ -155,8 +155,8 @@ public class UtentiController {
     }
 
     // DELETE - Elimina un utente dato l'id
-    // URL http://localhost:3001/utenti/{idUtente}
-    @DeleteMapping("{idUtente}")
+    // URL http://localhost:3001/utenti/:idUtente
+    @DeleteMapping("/{idUtente}")
     @PreAuthorize("hasAuthority('ADMIN')")  // Qui solo gli admin possono cancellare un utente
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminaUtente(@PathVariable UUID idUtente) {
